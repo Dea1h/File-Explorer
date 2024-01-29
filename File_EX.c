@@ -9,6 +9,46 @@
 
 #define KILO_BYTE 1024
 
+void errno_show();
+int search(char *search_target,char *path);
+int listDIR(char *path);
+
+
+int search(char *search_target,char *path){
+	DIR *DirP = opendir(path);
+	if(!DirP){
+		errno_show();
+	}
+	static int Found;
+
+	struct dirent *Fp;
+	while(!Found) {
+		Fp = readdir(DirP);
+		if(!Fp){
+			return 1;
+		}
+		if(strcmp(Fp->d_name,".") == 0 || strcmp(Fp->d_name,"..") == 0){
+			continue;
+		}
+
+		char root_path[500];
+
+		snprintf(root_path,sizeof(root_path),"%s/%s",path,Fp->d_name);
+
+		if(strstr(Fp->d_name,search_target) != NULL){
+			printf("FOUND %s At %s",Fp->d_name,root_path);
+			Found = 1;
+			return 1;
+		} else if(Fp->d_type == DT_DIR){
+			search(search_target,root_path);
+		}
+	}
+	if(closedir(DirP) != 0){
+		errno_show();
+	}
+	return 1;
+}
+
 void errno_show(){
 	switch(errno){
 		case EACCES: 	printf("Permission denied");			break;
@@ -21,7 +61,7 @@ void errno_show(){
 		case ENOTEMPTY:	printf("Directory not empty");			break;
 		case ENOTDIR:	printf("Not a directory");			break;
 		case EROFS:	printf("Read-Only Filesystem");			break;
-		default:		  					break;
+		default:	exit(0); 			break;
 	}
 }
 
@@ -31,7 +71,7 @@ int listDIR(char *path){
 	DirP = opendir(path);
 	if(DirP == NULL){
 		errno_show();
-		return -1;
+		return 0;
 	}
 
 	struct dirent *Fp;
@@ -48,7 +88,7 @@ int listDIR(char *path){
 		struct stat statBuf;
 		if(lstat(root_path,&statBuf) < 0) {
 			errno_show();
-			return -1;
+			return 0;
 		}
 		
 		time_t modtime = statBuf.st_mtime;
@@ -74,14 +114,17 @@ int listDIR(char *path){
 	}
 	if(closedir(DirP) < 0) {
 		errno_show();
-		return -1;
+		return 0;
 	}
-	
 	return 0;
 }
 
 int main(int argc,char **argv) {
-	char *path = "/mnt";
+	char *path = "/mnt/d";
 	listDIR(path);
+	char search_target[30];
+	printf("What do you want to search?");
+	scanf("%s",search_target);
+	search(search_target,path);
 	return 1;
 }
